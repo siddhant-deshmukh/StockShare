@@ -1,6 +1,5 @@
 import express, { NextFunction, Request, Response } from 'express' 
 var router = express.Router();
-import {  body,  validationResult } from 'express-validator';
 import User, { IUser, IUserCreate, IUserStored } from '../models/users';
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
@@ -22,9 +21,6 @@ router.post('/', auth, function(req : Request, res : Response, next : NextFuncti
 });
 
 router.post('/register', 
-  body('email').isEmail().isLength({max:50,min:3}).toLowerCase().trim(),
-  body('name').isString().isLength({max:50,min:3}).trim(),
-  body('password').isString().isLength({max:30,min:5}).trim(), 
   async function(req : Request, res : Response, next : NextFunction) {
     try{
       const {email,name,password} : {email:string,name:string,password:string}  = req.body;
@@ -48,8 +44,6 @@ router.post('/register',
   }
 );
 router.post('/login-password',
-  body('email').isEmail().isLength({max:50,min:3}),
-  body('password').isString().isLength({max:30,min:5}), 
   async function(req : Request, res : Response, next : NextFunction) {
     const {email,password} : {email:string,password:string}  = req.body;
     const checkUser = await User.findOne({email});
@@ -93,10 +87,6 @@ router.post('/login-google',
       let token = ""
       // console.log(checkUser)
       if(checkUser && checkUser.email === email){
-        if(checkUser.auth_type.findIndex((ele)=>(ele==='google')) === -1 ){
-          checkUser.auth_type = [...checkUser.auth_type,'google']
-          await checkUser.save()
-        }
         token = jwt.sign({_id:checkUser._id.toString(),email},process.env.TOKEN_KEY || 'zhingalala',{expiresIn:'2h'})
         res.cookie("GoogleFormClone_acesstoken",token)
       }else{
@@ -104,7 +94,7 @@ router.post('/login-google',
           email,
           name,
           emailVerfied,
-          auth_type:['google'],
+          
         }
         const newUserCreated : IUserStored = await User.create(newUser)
         
@@ -118,94 +108,6 @@ router.post('/login-google',
     }catch(err){
       // console.log(err)
       return res.status(500).json({msg : 'Some internal error occured',err})
-    }
-  }
-);
-router.get('/login-github', 
-  async function(req : Request, res : Response, next : NextFunction) {
-    try{
-      const { code } = req.query
-      
-      if(!code){
-        throw "No code given"
-      }
-
-      const rootUrl = 'https://github.com/login/oauth/access_token';
-      const options = {
-        client_id: process.env.GithubClientId,
-        client_secret: process.env.Github_Secret,
-        code,
-      };
-
-      const queryString = QueryString.stringify(options);
-
-      const { data } = await axios.post(`${rootUrl}?${queryString}`, {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      });
-      const { access_token } = QueryString.parse(data);
-
-      // return decoded;
-      if(!access_token){
-        // return res.redirect(`${process.env.Client_Url}&error=true`);
-        throw "No access_token while getting acess token"
-      }
-
-      const {data : email_data} = await axios.get(
-        'https://api.github.com/user/emails',
-        {
-          headers: {
-            Authorization: `Bearer ${access_token}`,
-          },
-        }
-      );
-      const {data : user_data} = await axios.get(
-        'https://api.github.com/user',
-        {
-          headers: {
-            Authorization: `Bearer ${access_token}`,
-          },
-        }
-      );
-
-      // return res.status(201).json(user_data_res);
-      if(!user_data || !email_data ){
-        throw "while getting api user"
-      }
-      // if( email_data.length < 1 ){
-      //   throw "while getting email data"
-      // }
-      //@ts-ignore
-      const userEmail = (email_data.filter((email)=>email.primary))[0].email
-      if((!userEmail) || typeof userEmail !== 'string'){
-        throw "Error getting primary email"
-      }
-      const checkUser = await User.findOne({email:userEmail})
-      let token = ""
-      if(checkUser && checkUser.email === userEmail){
-        if(checkUser.auth_type.findIndex((ele)=>(ele==='github')) === -1 ){
-          checkUser.auth_type = [...checkUser.auth_type,'github']
-          await checkUser.save()
-        }
-        token = jwt.sign({_id:checkUser._id.toString(),email:userEmail},process.env.TOKEN_KEY || 'zhingalala',{expiresIn:'2h'})
-        res.cookie("GoogleFormClone_acesstoken",token)
-      }else{
-        const newUser : IUserCreate = {
-          email : userEmail,
-          name : user_data.name || user_data.login || "unnamed",
-          emailVerfied:true,
-          auth_type:['github'],
-          bio : user_data.bio
-        }
-        const newUserCreated : IUserStored = await User.create(newUser)
-        
-        token = jwt.sign({_id:newUserCreated._id.toString(),email:userEmail},process.env.TOKEN_KEY || 'zhingalala',{expiresIn:'2h'})
-        res.cookie("GoogleFormClone_acesstoken",token)
-      }
-      return res.status(201).json({token})
-    } catch (err){
-      return res.status(500).json({err,msg:"Internal error occured"})
     }
   }
 );

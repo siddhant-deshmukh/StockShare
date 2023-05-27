@@ -1,13 +1,10 @@
 import express, { Express, Request, Response } from 'express';
-import * as bodyParser  from 'body-parser'
 import dotenv from 'dotenv';
 import cors from 'cors'
 import cookieParser from 'cookie-parser';
 import mongoose from 'mongoose';
-import indexRouter from './routes/indexRoutes'
-import userRouter from './routes/userRoutes'
-import formRouter from './routes/formRoutes'
-import responsesRouter from './routes/resRoutes'
+import userRouter from './routes/indexRoutes'
+import indexRouter from './routes/userRoutes'
 
 dotenv.config();
 
@@ -25,8 +22,6 @@ mongoose.connect(process.env.MONGODB_ATLAS_URL as string)
 
 app.use('/',indexRouter)
 app.use('/u',userRouter)
-app.use('/f',formRouter)
-app.use('/res',responsesRouter)
 
 app.listen(port, () => {
   console.log(`⚡️[server]: Server is running at http://localhost:${port}`);
