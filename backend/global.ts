@@ -1,13 +1,13 @@
 import { IUser } from "./models/users";
 
-export {};
+export { };
 
 declare global {
-    namespace Express {
-        export interface Response {
-            jsonStatusOk: (obj: any) => void;
-            jsonStatusError: (obj: any) => void;
-            user: IUser
-        }
+  namespace Express {
+    export interface Response {
+      jsonStatusOk: (obj: any) => void;
+      jsonStatusError: (obj: any) => void;
+      user: IUser
     }
+  }
 }

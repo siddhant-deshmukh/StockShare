@@ -20,11 +20,15 @@ export const AppContextProvider = ({ children }) => {
     
     useEffect(()=>{
         setAuthLoading(true)
-        fetch('/api/check')
+        fetch(`${import.meta.env.VITE_API_URL}/`,{
+            credentials : 'include',
+        })
             .then((res)=>res.json())
             .then((data)=>{
-                if(data && data._id){
-                    setAuthState(data)
+                if(data && data.user && data.user._id){
+                    setAuthState(data.user)
+                }else{
+                    setAuthState(null)
                 }
             })
             .finally(()=>{

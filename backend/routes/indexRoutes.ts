@@ -6,24 +6,29 @@ import jwt from 'jsonwebtoken'
 import auth from '../auth'
 import {google} from "googleapis"
 import dotenv from 'dotenv';
-import QueryString from 'qs';
-import axios from 'axios'
 
 dotenv.config();
-
-const googleClient = new google.auth.OAuth2(process.env.GoogleClientId,process.env.Google_Secret,`${process.env.Client_Url}`);
+const oauth2Client = new google.auth.OAuth2();    // create new auth client
+const googleClient = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID,process.env.GOOGLE_SECRET,`${process.env.CLIENT_URL}`);
 /* GET home page. */
 router.get('/', auth, function(req : Request, res : Response, next : NextFunction) {
   return res.status(201).json({ user : res.user });
 });
+
 router.post('/', auth, function(req : Request, res : Response, next : NextFunction) {
-  res.send({ title: 'This is for GoogleForm' });
+  res.send({ title: 'This is for Testing!' });
 });
 
 router.post('/register', 
   async function(req : Request, res : Response, next : NextFunction) {
     try{
+
       const {email,name,password} : {email:string,name:string,password:string}  = req.body;
+      console.log(req.body)
+      if( !email || !name || !password || password.length < 5 || name.length < 3){
+        return res.status(401).json({msg:'Give correct values!'});
+      }
+
       const checkEmail = await User.findOne({email});
       if(checkEmail) return res.status(409).json({msg:'User already exists!'});
 
@@ -37,12 +42,13 @@ router.post('/register',
       
       const token = jwt.sign({_id:newUser._id.toString(),email},process.env.TOKEN_KEY || 'zhingalala',{expiresIn:'2h'})
       res.cookie("GoogleFormClone_acesstoken",token)
-      return res.status(201).json({token})
+      return res.status(201).json({token, user : newUser})
     } catch (err) {
       return res.status(500).json({msg : 'Some internal error occured',err})
     }
   }
 );
+
 router.post('/login-password',
   async function(req : Request, res : Response, next : NextFunction) {
     const {email,password} : {email:string,password:string}  = req.body;
@@ -54,9 +60,10 @@ router.post('/login-password',
 
     const token = jwt.sign({_id:checkUser._id.toString(),email},process.env.TOKEN_KEY || 'zhingalala',{expiresIn:'2h'})
     res.cookie("GoogleFormClone_acesstoken",token)
-    return res.status(201).json({token})
+    return res.status(201).json({token, user : checkUser})
   }
 );
+
 router.post('/login-google', 
   async function(req : Request, res : Response, next : NextFunction) {
     try{
@@ -65,12 +72,11 @@ router.post('/login-google',
       if(!code){
         throw "code doesn't exist"
       }
-      let { tokens } = await googleClient.getToken(code);    // get tokens
-      if(!tokens || !tokens.access_token){
+      let { tokens : google_tokens } = await googleClient.getToken(code);    // get google_tokens
+      if(!google_tokens || !google_tokens.access_token){
         throw "token not found"
       }
-      let oauth2Client = new google.auth.OAuth2();    // create new auth client
-      oauth2Client.setCredentials({access_token: tokens.access_token});    // use the new auth client with the access_token
+      oauth2Client.setCredentials({access_token: google_tokens.access_token});    // use the new auth client with the access_token
       let oauth2 = google.oauth2({
         auth: oauth2Client,
         version: 'v2'
@@ -94,7 +100,6 @@ router.post('/login-google',
           email,
           name,
           emailVerfied,
-          
         }
         const newUserCreated : IUserStored = await User.create(newUser)
         
@@ -111,6 +116,7 @@ router.post('/login-google',
     }
   }
 );
+
 router.get('/logout',async function(req : Request, res : Response, next : NextFunction) {
   try{
     res.cookie("GoogleFormClone_acesstoken",null)
